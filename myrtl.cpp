@@ -82,8 +82,8 @@ namespace crt
 
     const char* my_strrchr(const char* s, int c)
     {
-      register const char* ss;
-      register size_t i;
+      const char* ss;
+      size_t i;
 
       for (i = lstrlenA(s) + 1 , ss = s + i; i; i--)
       {

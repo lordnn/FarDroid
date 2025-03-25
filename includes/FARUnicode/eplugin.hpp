@@ -8,9 +8,7 @@
   Rev 20.06.2000
 */
 
-#if !defined(__PLUGIN_HPP)
-#include <plugin.hpp>
-#endif
+#include "plugin.hpp"
 
 #if defined(__BORLANDC__) && (__BORLANDC <= 0x520)
   #pragma option -a1
@@ -134,17 +132,6 @@ enum{
   stdbIgnore,
   stdbYes,
   stdbNo
-};
-
-// "std" кнопки :-)
-wchar_t *_stdButton[7]={
-  L"Ok",
-  L"Cancel",
-  L"Abort",
-  L"Retry",
-  L"Ignore",
-  L"Yes",
-  L"No"
 };
 
 #if defined(__BORLANDC__)

@@ -138,7 +138,7 @@ struct CCopyRecord
   CString dst;
   UINT64	size;
   time_t	time;
-	int	dir;
+  int	dir;
 };
 
 typedef CSimpleArrayEx<CCopyRecord*, CCopyRecord*> CCopyRecords;
@@ -195,8 +195,8 @@ struct ProcessStruct
   bool bPrevState;
 
   CString from;
-	CString to;
-	CString title;
+  CString to;
+  CString title;
 
   int nPosition;
   int nTotalFiles;
@@ -297,9 +297,9 @@ private:
   void ShowADBExecError(CString err, bool bSilent);
   static void DrawProgress(CString& sProgress, int size, double pc);
   static void DrawProgress(CString& sProgress, int size, LPCTSTR current, LPCTSTR total);
-	static void SetTitle(CString& title, double tpc);
-	static CString GetTitle();
-	static SOCKET	CreateADBSocket();
+  static void SetTitle(CString& title, double tpc);
+  static CString GetTitle();
+  static SOCKET	CreateADBSocket();
   SOCKET	PrepareADBSocket();
   static bool		SendADBPacket(SOCKET sockADB, void * packet, int size);
   static bool		SendADBCommand(SOCKET sockADB, LPCTSTR sCMD);
@@ -315,9 +315,9 @@ private:
   static bool		ADBReadMode(SOCKET sockADB, LPCTSTR path, int &mode);
   BOOL		ADBPushFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString & sRes);
   bool		ADBPushDir(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString &sRes);
-	int ADBPushDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
+  int ADBPushDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
   BOOL		ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString & sRes, const time_t &mtime);
-	int ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
+  int ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
   static void		CloseADBSocket(SOCKET sockADB);
 
   bool DeviceTest();
@@ -389,8 +389,8 @@ public:
   int CreateDir(CString &DestPath, OPERATION_MODES OpMode);
   int Rename(CString& DestPath);
   int Copy(CString& DestPath);
-	int Remount(LPCTSTR Mode);
-	int RenameFile(const CString& src, const CString& dst, CString& sRes);
+  int Remount(LPCTSTR Mode);
+  int RenameFile(const CString& src, const CString& dst, CString& sRes);
   int GetFramebuffer();
   void Reread();
 

@@ -836,8 +836,8 @@ int fardroid::GetFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString& Des
       return ABORT;
   }
 
-	auto title = GetTitle();
-	m_bForceBreak = false;
+  auto title = GetTitle();
+  m_bForceBreak = false;
   if (m_procStruct.Lock())
   {
     m_procStruct.title = Move ? LOC(MMoveFile) : LOC(MGetFile);
@@ -851,14 +851,14 @@ int fardroid::GetFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString& Des
   }
 
   unsigned threadID = 0;
-	auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
 
   auto result = GetItems(PanelItem, ItemsNumber, srcdir, DestPath, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
-	::SetConsoleTitle(title);
+  ::SetConsoleTitle(title);
 
   return result;
 }
@@ -1388,7 +1388,7 @@ bool fardroid::ADBSendFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
 {
   syncmsg msg;
 
-	CString sData;
+  CString sData;
   sData.Format(_T("%s,%d"), sDst, mode);
 
   int len = lstrlen(sDst);
@@ -1627,7 +1627,7 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
 {
   syncmsg msg;
 
-	CString file = WtoUTF8(sSrc, false);
+  CString file = WtoUTF8(sSrc, false);
   auto ft = UnixTimeToFileTime(mtime);
 
   int len = lstrlen(file);
@@ -2110,7 +2110,7 @@ void fardroid::ShowProgressMessage()
       return;
     }
 
-		CString title = m_procStruct.title;
+    CString title = m_procStruct.title;
     time = GetTickCount();
     if (m_procStruct.pType == PS_COPY || m_procStruct.pType == PS_MOVE)
     {
@@ -2245,7 +2245,7 @@ int fardroid::DeleteFiles(PluginPanelItem* PanelItem, int ItemsNumber, OPERATION
       return ABORT;
   }
 
-	auto title = GetTitle();
+  auto title = GetTitle();
   taskbarIcon.SetState(taskbarIcon.S_WORKING);
   m_bForceBreak = false;
   if (m_procStruct.Lock())
@@ -2257,15 +2257,15 @@ int fardroid::DeleteFiles(PluginPanelItem* PanelItem, int ItemsNumber, OPERATION
     m_procStruct.Unlock();
   }
 
-	unsigned threadID = 0;
-	auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  unsigned threadID = 0;
+  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
 
   auto result = DelItems(PanelItem, ItemsNumber, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
-	::SetConsoleTitle(title);
+  ::SetConsoleTitle(title);
 
   return result;
 }
@@ -2284,8 +2284,8 @@ int fardroid::PutFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString SrcP
   if (IS_FLAG(OpMode, OPM_EDIT))
     noPromt = true;
 
-	auto title = GetTitle();
-	taskbarIcon.SetState(taskbarIcon.S_WORKING);
+  auto title = GetTitle();
+  taskbarIcon.SetState(taskbarIcon.S_WORKING);
   m_bForceBreak = false;
   if (m_procStruct.Lock())
   {
@@ -2299,15 +2299,15 @@ int fardroid::PutFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString SrcP
     m_procStruct.Unlock();
   }
 
-	unsigned threadID = 0;
-	auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  unsigned threadID = 0;
+  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
 
   auto result = PutItems(PanelItem, ItemsNumber, srcdir, path, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
-	::SetConsoleTitle(title);
+  ::SetConsoleTitle(title);
 
   return result;
 }
@@ -2445,8 +2445,8 @@ int fardroid::GetFramebuffer()
     m_procStruct.Unlock();
   }
 
-	unsigned threadID = 0;
-	auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  unsigned threadID = 0;
+  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
 
   fb fb;
   auto result = ADBReadFramebuffer(&fb);
@@ -2458,7 +2458,7 @@ int fardroid::GetFramebuffer()
   m_bForceBreak = true;
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
-	::SetConsoleTitle(title);
+  ::SetConsoleTitle(title);
 
   if (result == TRUE)
   {
@@ -2798,7 +2798,7 @@ bool fardroid::CheckADBResponse(SOCKET sockADB)
 
 bool fardroid::ReadADBSocket(SOCKET sockADB, char* buf, int bufSize)
 {
-	int received = 0;
+  int received = 0;
   while (received < bufSize)
   {
     int nsize = recv(sockADB, buf, bufSize, 0);
@@ -2897,7 +2897,7 @@ bool fardroid::SendADBPacket(SOCKET sockADB, void* packet, int size)
 {
   char* p = static_cast<char*>(packet);
 
-	while (size > 0)
+  while (size > 0)
   {
     int r = send(sockADB, p, size, 0);
     if (r > 0)
@@ -2914,7 +2914,7 @@ bool fardroid::SendADBPacket(SOCKET sockADB, void* packet, int size)
 int fardroid::ReadADBPacket(SOCKET sockADB, void* packet, int size)
 {
   char* p = static_cast<char*>(packet);
-	int received = 0;
+  int received = 0;
 
   while (size > 0)
   {
@@ -2992,7 +2992,7 @@ int fardroid::ADBReadFramebuffer(struct fb* fb)
     fb->data = my_malloc(fb->size);
     int size = fb->size;
     auto position = static_cast<char*>(fb->data);
-	  while (size > 0)
+    while (size > 0)
     {
       int readed = ReadADBPacket(sockADB, position, min(size, SYNC_DATA_MAX));
       if (readed == 0) break;

@@ -43,9 +43,8 @@ typedef CSortedArray<int, int&> simpvec;
 
 //FAR includes
 #define _FAR_USE_FARFINDDATA
-#include "includes\FARUnicode\eplugin.hpp"
-#include "includes\FARUnicode\plugin.hpp"
-#include "includes\FARUnicode\farcolor.hpp"
+#include <FARUnicode/eplugin.hpp>
+#include <FARUnicode/farcolor.hpp>
 
 #define _F(x)     L ## x
 #define farStr wchar_t

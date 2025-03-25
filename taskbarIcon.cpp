@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "taskbarIcon.h"
-#include <plugin.hpp>
 
 TaskBarIcon::TaskBarIcon() : lastState(S_NO_PROGRESS)
 {
