@@ -489,8 +489,9 @@ CString FormatNumber(UINT64 str)
 
   CString src;
   src.Format(L"%I64d", str);
-  wchar_t* buf = static_cast<wchar_t*>(my_malloc(255));
-  GetNumberFormat(LOCALE_USER_DEFAULT, 0, src, &fmt, buf, 255);
+  const int cnt = GetNumberFormat(LOCALE_USER_DEFAULT, 0, src, &fmt, NULL, 0);
+  wchar_t* buf = static_cast<wchar_t*>(my_malloc(cnt * sizeof(wchar_t)));
+  GetNumberFormat(LOCALE_USER_DEFAULT, 0, src, &fmt, buf, cnt);
   CString res;
   res.Format(L"%s", buf);
   my_free(buf);

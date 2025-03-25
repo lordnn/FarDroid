@@ -856,6 +856,7 @@ int fardroid::GetFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString& Des
   auto result = GetItems(PanelItem, ItemsNumber, srcdir, DestPath, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
+  WaitForSingleObject(hThread, INFINITE);
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
@@ -1863,7 +1864,7 @@ BOOL fardroid::ADB_ls(LPCTSTR sDir, CFileRecords& files, CString& sRes, bool bSi
 BOOL fardroid::ADB_rm(LPCTSTR sDir, CString& sRes)
 {
   CString s;
-  s.Format(_T("rm -r \"%s\""), WtoUTF8(sDir));
+  s.Format(_T("rm -rf \"%s\""), WtoUTF8(sDir));
   ADBShellExecute(s, sRes);
   return sRes.GetLength() == 0;
 }
@@ -2263,6 +2264,7 @@ int fardroid::DeleteFiles(PluginPanelItem* PanelItem, int ItemsNumber, OPERATION
   auto result = DelItems(PanelItem, ItemsNumber, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
+  WaitForSingleObject(hThread, INFINITE);
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
@@ -2305,6 +2307,7 @@ int fardroid::PutFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString SrcP
   auto result = PutItems(PanelItem, ItemsNumber, srcdir, path, noPromt, noPromt, bSilent);
 
   m_bForceBreak = true;
+  WaitForSingleObject(hThread, INFINITE);
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
@@ -2456,6 +2459,7 @@ int fardroid::GetFramebuffer()
   }
 
   m_bForceBreak = true;
+  WaitForSingleObject(hThread, INFINITE);
   CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
