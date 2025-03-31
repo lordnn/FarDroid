@@ -74,8 +74,6 @@ typedef CSortedArray<int, int&> simpvec;
 #include "FARstuffs.h"
 #include "Config.h"
 
-#include "fardroid.h"
-
 extern PluginStartupInfo fInfo;
 extern FarStandardFunctions FSF;
 extern HMODULE hInst;

@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "fardroid.h"
 #include "framebuffer.h"
+#include <memory>
 #include <vector>
 #include <ctime>
 
@@ -9,7 +10,7 @@ unsigned __stdcall ProcessThreadProc(void* lpParam)
   auto android = static_cast<fardroid *>(lpParam);
   while (android)
   {
-    if (CheckForKey(VK_ESCAPE) && android->BreakProcessDialog()) 
+    if (CheckForKey(VK_ESCAPE) && android->BreakProcessDialog())
       android->m_bForceBreak = true;
 
     if (android->m_bForceBreak)
@@ -19,7 +20,7 @@ unsigned __stdcall ProcessThreadProc(void* lpParam)
     Sleep(100);
   }
 
-	_endthreadex(0);
+  _endthreadex(0);
   return 0;
 }
 
@@ -1322,14 +1323,16 @@ bool fardroid::ADBTransmitFile(SOCKET sockADB, LPCTSTR sFileName, time_t& mtime)
 {
   HANDLE hFile = CreateFile(sFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
-  if (hFile == INVALID_HANDLE_VALUE)
+  if (hFile == INVALID_HANDLE_VALUE) {
     return false;
+  }
+  std::unique_ptr<void, decltype(&CloseHandle)> safeFile(hFile, &CloseHandle);
 
   FILETIME ft;
   GetFileTime(hFile, nullptr, nullptr, &ft);
   FileTimeToUnixTime(&ft, &mtime);
 
-  syncsendbuf* sbuf = new syncsendbuf;
+  auto sbuf = std::make_unique<syncsendbuf>();
   sbuf->id = ID_DATA;
 
   auto result = true;
@@ -1346,7 +1349,7 @@ bool fardroid::ADBTransmitFile(SOCKET sockADB, LPCTSTR sFileName, time_t& mtime)
       break;
 
     sbuf->size = readed;
-    if (!SendADBPacket(sockADB, sbuf, sizeof(unsigned) * 2 + readed))
+    if (!SendADBPacket(sockADB, sbuf.get(), sizeof(unsigned) * 2 + readed))
     {
       result = false;
       break;
@@ -1363,8 +1366,6 @@ bool fardroid::ADBTransmitFile(SOCKET sockADB, LPCTSTR sFileName, time_t& mtime)
       break;
   }
 
-  delete sbuf;
-  CloseHandle(hFile);
   return result;
 }
 
@@ -1587,7 +1588,7 @@ int fardroid::ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files
   AddEndSlash(sdir, true);
   AddEndSlash(ddir);
 
-	auto child = 1;
+  auto child = 1;
   CString sRes;
   CFileRecords recs;
   if (ADB_ls(sSrc, recs, sRes, true))
@@ -1621,7 +1622,7 @@ int fardroid::ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files
 		}
   }
   DeleteRecords(recs);
-	return child;
+  return child;
 }
 
 BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t& mtime)
@@ -1644,71 +1645,51 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
     if (!bOK) return FALSE;
   }
 
-  if (ReadADBPacket(sockADB, &msg.data, sizeof(msg.data)) <= 0)
-    return FALSE;
-
-  unsigned id = msg.data.id;
-  if ((id != ID_DATA) && (id != ID_DONE))
-  {
-    ReadError(sockADB, id, msg.data.size, sRes);
-    return FALSE;
-  }
-
   if (FileExists(sDst))
     DeleteFileTo(sDst, false);
   MakeDirs(ExtractPath(sDst, false));
 
   HANDLE hFile = CreateFile(sDst, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-  if (hFile == INVALID_HANDLE_VALUE)
+  if (hFile == INVALID_HANDLE_VALUE) {
     return FALSE;
+  }
+  std::unique_ptr<void, decltype(&CloseHandle)> safeFile(hFile, &CloseHandle);
 
   SetFileTime(hFile, &ft, &ft, &ft);
 
-  char* buffer = new char[SYNC_DATA_MAX];
+  auto buffer = std::make_unique<char[]>(SYNC_DATA_MAX);
   DWORD written = 0;
-  bool bFirst = true;
+  BOOL bRes = FALSE;
   while (true)
   {
-    if (!bFirst)
-    {
-      if (ReadADBPacket(sockADB, &msg.data, sizeof(msg.data)) <= 0)
-      {
-        delete [] buffer;
-        CloseHandle(hFile);
-        return FALSE;
-      }
-      id = msg.data.id;
+    if (ReadADBPacket(sockADB, &msg.data, sizeof(msg.data)) <= 0)  {
+      break;
     }
-
+    unsigned id = msg.data.id;
     len = msg.data.size;
-    if (id == ID_DONE) break;
+    if (id == ID_DONE) {
+      bRes = TRUE;
+      break;
+    }
     if (id != ID_DATA)
     {
-      delete [] buffer;
-      CloseHandle(hFile);
       ReadError(sockADB, id, len, sRes);
-      return FALSE;
+      break;
     }
 
     if (len > SYNC_DATA_MAX)
     {
-      delete [] buffer;
-      CloseHandle(hFile);
-      return FALSE;
+      break;
     }
 
-    if (ReadADBPacket(sockADB, buffer, len) <= 0)
+    if (ReadADBPacket(sockADB, buffer.get(), len) <= 0)
     {
-      delete [] buffer;
-      CloseHandle(hFile);
-      return FALSE;
+      break;
     }
 
-    if (!WriteFile(hFile, buffer, len, &written, nullptr))
+    if (!WriteFile(hFile, buffer.get(), len, &written, nullptr))
     {
-      delete [] buffer;
-      CloseHandle(hFile);
-      return FALSE;
+      break;
     }
 
     if (m_procStruct.Lock())
@@ -1720,23 +1701,19 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
 
     if (m_bForceBreak)
     {
-      delete [] buffer;
-      CloseHandle(hFile);
+      safeFile.reset();
       DeleteFileTo(sDst, true);
-      return TRUE;
+      bRes = TRUE;
+      break;
     }
-    bFirst = false;
   }
 
-  delete [] buffer;
-  CloseHandle(hFile);
-  return TRUE;
+  return bRes;
 }
 
 BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t& mtime)
 {
   int mode;
-  CString dest = sDst;
 
   SOCKET sock = PrepareADBSocket();
 
@@ -1753,7 +1730,7 @@ BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t&
   }
   if (IS_FLAG(mode, S_IFREG) || IS_FLAG(mode, S_IFCHR) || IS_FLAG(mode, S_IFBLK))
   {
-    if (!ADBPullFile(sock, sSrc, dest, sRes, mtime))
+    if (!ADBPullFile(sock, sSrc, sDst, sRes, mtime))
     {
       CloseADBSocket(sock);
       return FALSE;
@@ -1762,7 +1739,7 @@ BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t&
   }
   else if (IS_FLAG(mode, S_IFDIR))
   {
-    if (!ADB_mkdir(dest, sRes))
+    if (!ADB_mkdir(sDst, sRes))
     {
       CloseADBSocket(sock);
       return FALSE;
