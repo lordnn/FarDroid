@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "fardroid.h"
 #include "framebuffer.h"
+#include <chrono>
 #include <memory>
 #include <vector>
 #include <ctime>
@@ -25,7 +26,7 @@ unsigned __stdcall ProcessThreadProc(void* lpParam)
 }
 
 
-fardroid::fardroid(): lastError(S_OK), handleAdbServer(FALSE), InfoPanelLineArray(nullptr), m_bForceBreak(false)
+fardroid::fardroid(): lastError(S_OK), handleAdbServer(FALSE), InfoPanelLineArray(nullptr), m_bForceBreak(false), thPool(1)
 {
   m_currentPath = _T("/");
   m_currentDevice.Empty();
@@ -851,18 +852,13 @@ int fardroid::GetFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString& Des
     m_procStruct.Unlock();
   }
 
-  unsigned threadID = 0;
-  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  auto result = thPool.enqueue(&fardroid::GetItems, this, PanelItem, ItemsNumber, srcdir, DestPath, noPromt, noPromt, bSilent);
+  WaitForThread(result);
 
-  auto result = GetItems(PanelItem, ItemsNumber, srcdir, DestPath, noPromt, noPromt, bSilent);
-
-  m_bForceBreak = true;
-  WaitForSingleObject(hThread, INFINITE);
-  CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
 
-  return result;
+  return result.get();
 }
 
 int fardroid::UpdateInfoLines()
@@ -2235,18 +2231,13 @@ int fardroid::DeleteFiles(PluginPanelItem* PanelItem, int ItemsNumber, OPERATION
     m_procStruct.Unlock();
   }
 
-  unsigned threadID = 0;
-  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  auto result = thPool.enqueue(&fardroid::DelItems, this, PanelItem, ItemsNumber, noPromt, noPromt, bSilent);
+  WaitForThread(result);
 
-  auto result = DelItems(PanelItem, ItemsNumber, noPromt, noPromt, bSilent);
-
-  m_bForceBreak = true;
-  WaitForSingleObject(hThread, INFINITE);
-  CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
 
-  return result;
+  return result.get();
 }
 
 int fardroid::PutFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString SrcPath, BOOL Move, OPERATION_MODES OpMode)
@@ -2278,18 +2269,13 @@ int fardroid::PutFiles(PluginPanelItem* PanelItem, int ItemsNumber, CString SrcP
     m_procStruct.Unlock();
   }
 
-  unsigned threadID = 0;
-  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
+  auto result = thPool.enqueue(&fardroid::PutItems, this, PanelItem, ItemsNumber, srcdir, path, noPromt, noPromt, bSilent);
+  WaitForThread(result);
 
-  auto result = PutItems(PanelItem, ItemsNumber, srcdir, path, noPromt, noPromt, bSilent);
-
-  m_bForceBreak = true;
-  WaitForSingleObject(hThread, INFINITE);
-  CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
 
-  return result;
+  return result.get();
 }
 
 int fardroid::CreateDir(CString& DestPath, OPERATION_MODES OpMode)
@@ -2425,19 +2411,18 @@ int fardroid::GetFramebuffer()
     m_procStruct.Unlock();
   }
 
-  unsigned threadID = 0;
-  auto hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, ProcessThreadProc, this, 0, &threadID));
-
   fb fb;
-  auto result = ADBReadFramebuffer(&fb);
-  if (result == TRUE)
-  {
-    result = SaveToClipboard(&fb);
-  }
+  auto thRes = thPool.enqueue([this, &fb](){
+    auto result = ADBReadFramebuffer(&fb);
+    if (result == TRUE)
+    {
+      result = SaveToClipboard(&fb);
+    }
+    return result;
+  });
+  WaitForThread(thRes);
+  auto result = thRes.get();
 
-  m_bForceBreak = true;
-  WaitForSingleObject(hThread, INFINITE);
-  CloseHandle(hThread);
   taskbarIcon.SetState(taskbarIcon.S_NO_PROGRESS);
   ::SetConsoleTitle(title);
 
@@ -3003,3 +2988,18 @@ int fardroid::ADBReadFramebuffer(struct fb* fb)
   return result;
 }
 
+template <typename B>
+void fardroid::WaitForThread(const std::future<B> &f) {
+  using namespace std::chrono_literals;
+  while (true)
+  {
+    if (CheckForKey(VK_ESCAPE) && BreakProcessDialog())
+      m_bForceBreak = true;
+
+    if (m_bForceBreak || std::future_status::ready == f.wait_for(0s))
+      break;
+
+    ShowProgressMessage();
+    std::this_thread::sleep_for(100ms);
+  }
+}

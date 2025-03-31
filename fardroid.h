@@ -26,6 +26,7 @@
 
 #include "taskbarIcon.h"
 #include "framebuffer.h"
+#include "ThreadPool.h"
 #include <memory>
 #include <vector>
 #include <map>
@@ -286,6 +287,7 @@ private:
   InfoPanelLine * InfoPanelLineArray;
   InfoPanelLines lines;
   InfoSize infoSize;
+  ThreadPool thPool;
 
   CString m_currentPath;
   CString m_currentDevice;
@@ -349,6 +351,7 @@ private:
   int UpdateInfoLines();
   CFileRecord* ReadFileRecord(const CString& sSource);
   static CString PermissionsFileToMask(CString Permission);
+  template <typename B> void WaitForThread(const std::future<B> &f);
 public:
   bool m_bForceBreak;
   TaskBarIcon taskbarIcon;
