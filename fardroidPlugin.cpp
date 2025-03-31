@@ -27,7 +27,7 @@ void WINAPI GetGlobalInfoW(struct GlobalInfo* Info)
   Info->Guid = MainGuid;
   Info->Title = L"FARDroid";
   Info->Description = L"FARDroid FAR Plugin";
-  Info->Author = L"Vladimir Kubyshev, dimfish";
+  Info->Author = L"Vladimir Kubyshev, dimfish, lordnn";
 }
 
 void WINAPI SetStartupInfoW(const struct PluginStartupInfo* Info)

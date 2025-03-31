@@ -6,26 +6,6 @@
 #include <vector>
 #include <ctime>
 
-unsigned __stdcall ProcessThreadProc(void* lpParam)
-{
-  auto android = static_cast<fardroid *>(lpParam);
-  while (android)
-  {
-    if (CheckForKey(VK_ESCAPE) && android->BreakProcessDialog())
-      android->m_bForceBreak = true;
-
-    if (android->m_bForceBreak)
-      break;
-
-    android->ShowProgressMessage();
-    Sleep(100);
-  }
-
-  _endthreadex(0);
-  return 0;
-}
-
-
 fardroid::fardroid(): lastError(S_OK), handleAdbServer(FALSE), InfoPanelLineArray(nullptr), m_bForceBreak(false), thPool(1)
 {
   m_currentPath = _T("/");
@@ -452,12 +432,12 @@ int fardroid::GetItems(PluginPanelItem* PanelItem, int ItemsNumber, const CStrin
       {
         result = ADB_copy(files[i]->src, tsname, sRes);
         if (result)
-          result = ADB_pull(tsname, tname, sRes, files[i]->time);
+          result = ADB_pull(tsname, tname, files[i]->dst, sRes, files[i]->time);
         DeleteFileFrom(tsname, true);
       }
       else
       {
-        result = ADB_pull(files[i]->src, tname, sRes, files[i]->time);
+        result = ADB_pull(files[i]->src, tname, files[i]->dst, sRes, files[i]->time);
       }
 
       if (result == FALSE)
@@ -478,20 +458,6 @@ int fardroid::GetItems(PluginPanelItem* PanelItem, int ItemsNumber, const CStrin
       }
       continue;
     }
-
-    if (exist)
-    {
-      result = DeleteFileTo(files[i]->dst, false);
-      if (result == FALSE)
-      {
-        DeleteFileTo(tname, true);
-        break;
-      }
-    }
-
-    result = MoveFile(tname, files[i]->dst) ? TRUE : FALSE;
-    if (result == FALSE)
-      break;
   }
 
   DeleteRecords(files);
@@ -1621,7 +1587,7 @@ int fardroid::ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files
   return child;
 }
 
-BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t& mtime)
+BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sTmp, LPCTSTR sDst, CString& sRes, const time_t& mtime)
 {
   syncmsg msg;
 
@@ -1641,11 +1607,11 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
     if (!bOK) return FALSE;
   }
 
-  if (FileExists(sDst))
-    DeleteFileTo(sDst, false);
-  MakeDirs(ExtractPath(sDst, false));
+  if (FileExists(sTmp))
+    DeleteFileTo(sTmp, false);
+  MakeDirs(ExtractPath(sTmp, false));
 
-  HANDLE hFile = CreateFile(sDst, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  HANDLE hFile = CreateFile(sTmp, GENERIC_WRITE | DELETE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   if (hFile == INVALID_HANDLE_VALUE) {
     return FALSE;
   }
@@ -1663,10 +1629,24 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
     }
     unsigned id = msg.data.id;
     len = msg.data.size;
+
     if (id == ID_DONE) {
+      const DWORD structSize = sizeof(FILE_RENAME_INFO) + lstrlen(sDst) * sizeof(WCHAR);
+      auto safeBuf = std::make_unique<char[]>(structSize);
+      auto *fri = reinterpret_cast<FILE_RENAME_INFO*>(safeBuf.get());;
+      fri->ReplaceIfExists = TRUE;
+      fri->RootDirectory = FALSE;
+      fri->FileNameLength = lstrlen(sDst);
+      lstrcpyn(fri->FileName, sDst, fri->FileNameLength + 1);
+      if (!SetFileInformationByHandle(hFile, FileRenameInfo, fri, structSize)) {
+          FILE_DISPOSITION_INFO fdi;
+          fdi.DeleteFile = TRUE;
+          SetFileInformationByHandle(hFile, FileDispositionInfo, &fdi, sizeof(FILE_DISPOSITION_INFO));
+      }
       bRes = TRUE;
       break;
     }
+
     if (id != ID_DATA)
     {
       ReadError(sockADB, id, len, sRes);
@@ -1697,8 +1677,9 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
 
     if (m_bForceBreak)
     {
-      safeFile.reset();
-      DeleteFileTo(sDst, true);
+      FILE_DISPOSITION_INFO fdi;
+      fdi.DeleteFile = TRUE;
+      SetFileInformationByHandle(hFile, FileDispositionInfo, &fdi, sizeof(FILE_DISPOSITION_INFO));
       bRes = TRUE;
       break;
     }
@@ -1707,7 +1688,7 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& 
   return bRes;
 }
 
-BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t& mtime)
+BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sTmp, LPCTSTR sDst, CString& sRes, const time_t& mtime)
 {
   int mode;
 
@@ -1726,7 +1707,7 @@ BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t&
   }
   if (IS_FLAG(mode, S_IFREG) || IS_FLAG(mode, S_IFCHR) || IS_FLAG(mode, S_IFBLK))
   {
-    if (!ADBPullFile(sock, sSrc, sDst, sRes, mtime))
+    if (!ADBPullFile(sock, sSrc, sTmp, sDst, sRes, mtime))
     {
       CloseADBSocket(sock);
       return FALSE;
@@ -1735,7 +1716,7 @@ BOOL fardroid::ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, const time_t&
   }
   else if (IS_FLAG(mode, S_IFDIR))
   {
-    if (!ADB_mkdir(sDst, sRes))
+    if (!ADB_mkdir(sTmp, sRes))
     {
       CloseADBSocket(sock);
       return FALSE;

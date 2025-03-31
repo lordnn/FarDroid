@@ -287,6 +287,7 @@ private:
   InfoPanelLine * InfoPanelLineArray;
   InfoPanelLines lines;
   InfoSize infoSize;
+  bool m_bForceBreak;
   ThreadPool thPool;
 
   CString m_currentPath;
@@ -318,7 +319,7 @@ private:
   BOOL		ADBPushFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString & sRes);
   bool		ADBPushDir(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString &sRes);
   int ADBPushDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
-  BOOL		ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString & sRes, const time_t &mtime);
+  BOOL		ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sTmp, LPCTSTR sDst, CString & sRes, const time_t &mtime);
   int ADBPullDirGetFiles(LPCTSTR sSrc, LPCTSTR sDst, CCopyRecords& files);
   static void		CloseADBSocket(SOCKET sockADB);
 
@@ -330,7 +331,7 @@ private:
   BOOL ADB_copy(LPCTSTR sSource, LPCTSTR sDest, CString& sRes);
   BOOL ADB_chmod(LPCTSTR sSource, LPCTSTR octal, CString& sRes);
   BOOL ADB_chown(LPCTSTR sSource, LPCTSTR user, LPCTSTR group, CString& sRes);
-  BOOL ADB_pull(LPCTSTR sSrc, LPCTSTR sDst, CString & sRes, const time_t& mtime);
+  BOOL ADB_pull(LPCTSTR sSrc, LPCTSTR sTmp, LPCTSTR sDst, CString & sRes, const time_t& mtime);
   BOOL ADB_push(LPCTSTR sSrc, LPCTSTR sDst, CString & sRes);
   BOOL ADB_mount(LPCTSTR sFS, LPCTSTR sMode, CString & sRes);
 
@@ -353,7 +354,6 @@ private:
   static CString PermissionsFileToMask(CString Permission);
   template <typename B> void WaitForThread(const std::future<B> &f);
 public:
-  bool m_bForceBreak;
   TaskBarIcon taskbarIcon;
 
   CString panelTitle;
