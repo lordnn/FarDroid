@@ -3,6 +3,7 @@
 
 TaskBarIcon::TaskBarIcon() : lastState(S_NO_PROGRESS)
 {
+  value.StructSize = sizeof(value);
   value.Total = 100;
 }
 
