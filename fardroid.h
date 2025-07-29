@@ -352,7 +352,7 @@ private:
   int UpdateInfoLines();
   CFileRecord* ReadFileRecord(const CString& sSource);
   static CString PermissionsFileToMask(CString Permission);
-  template <typename B> void WaitForThread(const std::future<B> &f);
+  void WaitForThread(const std::future<int> &f);
 public:
   TaskBarIcon taskbarIcon;
 

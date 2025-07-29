@@ -3,7 +3,6 @@
 ThreadPool::ThreadPool(size_t maximum_threads) {
   if (maximum_threads == 0) {
     maximum_threads = std::thread::hardware_concurrency();
-//    printf("use max thread : %zu", maximum_threads);
   }
 
   threads_.reserve(maximum_threads);

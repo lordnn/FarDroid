@@ -496,7 +496,7 @@ int fardroid::PutItems(PluginPanelItem* PanelItem, int ItemsNumber, const CStrin
 
     if (IsDirectory(PanelItem[i].FileAttributes))
     {
-			rec->dir = ADBPushDirGetFiles(sname, dname, files);
+      rec->dir = ADBPushDirGetFiles(sname, dname, files);
     }
   }
 
@@ -746,7 +746,7 @@ int fardroid::GetFindData(struct PluginPanelItem** pPanelItem, size_t* pItemsNum
   if (NewPanelItem == nullptr)
     return FALSE;
 
-	for (int i = 0; i < items; i++)
+  for (int i = 0; i < items; i++)
   {
     my_memset(&NewPanelItem[i], 0, sizeof(PluginPanelItem));
 
@@ -782,8 +782,6 @@ void fardroid::FreeFindData(struct PluginPanelItem* PanelItem, int ItemsNumber)
         my_free(static_cast<void*>(const_cast<wchar_t*>(PanelItem[I].Description)));
     }
     my_free(PanelItem);
-    // ReSharper disable once CppAssignedValueIsNeverUsed
-    PanelItem = nullptr;
   }
 }
 
@@ -864,7 +862,7 @@ void fardroid::PreparePanel(OpenPanelInfo* Info)
 {
   if (InfoPanelLineArray)
   {
-    delete InfoPanelLineArray;
+    delete[] InfoPanelLineArray;
     InfoPanelLineArray = nullptr;
   }
 
@@ -1909,18 +1907,7 @@ CFileRecord* fardroid::ParseFileLine(CString& sLine) const
   auto isLink = sLine[0] == 'l';
   auto isDevice = sLine[0] == 'b' || sLine[0] == 'c' || sLine[0] == 's';
 
-  static const CString regexpDate1 = "\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}";
-  static const CString regexpDate2 = "\\w{3}\\s+\\d+\\s+\\d{4}";
-  static const CString regexpDate3 = "\\w{3}\\s+\\d+\\s+\\d{2}:\\d{2}";
-
-  CString regexpDate = "("+ regexpDate1 + "|" + regexpDate2 +"|"+ regexpDate3 +")";
-  CString regexpFile = isLink? "(.+(?=\\s->))\\s->\\s(.+)": "(.+)";
-  CString regexpSize = isDevice ? "(\\d+,\\s*\\d+)" : "(\\d+)?";
-
-  CString regexpBase = "/^([\\w-]{10})\\s+(?:\\d+\\s+)?(\\w+)\\s+(\\w+)\\s+%s\\s+%s\\s%s$/";
-
-  regex.Format(regexpBase, regexpSize, regexpDate, regexpFile);
-  RegExTokenize(sLine, regex, tokens);
+  RegExTokenize(sLine, hRegexpFile[isDevice][isLink], tokens);
   if (tokens.GetSize() > 5)
   {
     auto rec = new CFileRecord;
@@ -2122,8 +2109,8 @@ void fardroid::ShowProgressMessage()
         ShowMessageWait(MsgItems, sizeof(MsgItems) / sizeof(MsgItems[0]));
       }
       taskbarIcon.SetState(taskbarIcon.S_PROGRESS, tpc);
-			SetTitle(m_procStruct.title, tpc);
-		}
+      SetTitle(m_procStruct.title, tpc);
+    }
     else if (m_procStruct.pType == PS_DELETE)
     {
       int size = 50;
@@ -2135,8 +2122,8 @@ void fardroid::ShowProgressMessage()
       const farStr* MsgItems[] = { m_procStruct.title, m_procStruct.from, sProgress };
       ShowMessageWait(MsgItems, sizeof(MsgItems) / sizeof(MsgItems[0]));
       taskbarIcon.SetState(taskbarIcon.S_PROGRESS, tpc);
-			SetTitle(m_procStruct.title, tpc);
-		}
+      SetTitle(m_procStruct.title, tpc);
+    }
     else if (m_procStruct.pType == PS_FB)
     {
       CString mFrom = LOC(MScreenshotComplete);
@@ -2149,10 +2136,10 @@ void fardroid::ShowProgressMessage()
       const farStr* MsgItems[] = { m_procStruct.title, sProgress };
       ShowMessageWait(MsgItems, sizeof(MsgItems) / sizeof(MsgItems[0]));
       taskbarIcon.SetState(taskbarIcon.S_PROGRESS, tpc);
-			SetTitle(m_procStruct.title, tpc);
-		}
-		
-		m_procStruct.Unlock();
+      SetTitle(m_procStruct.title, tpc);
+    }
+
+    m_procStruct.Unlock();
   }
 }
 
@@ -2434,8 +2421,7 @@ CFileRecord* fardroid::GetFileRecord(LPCTSTR sFileName)
 unsigned long long fardroid::ParseSizeInfo(CString s)
 {
   strvec tokens;
-  CString regex = _T("/([\\d.]+)(.*)/");
-  RegExTokenize(s, regex, tokens);
+  RegExTokenize(s, hRegexpSize, tokens);
 
   auto res = 0ULL;
   if (tokens.GetSize() > 0)
@@ -2473,13 +2459,12 @@ void fardroid::GetDeviceInfo()
   Tokenize(sRes, str, _T("\n"));
 
   strvec tokens;
-  CString regex = _T("/^\\[([\\w.]+)\\]:\\s*\\[(.*)\\]$/");
   CString manufacturer = "Unknown", model, version;
 
   auto size = str.GetSize();
   for (auto i = 0; i < size; i++)
   {
-    RegExTokenize(str[i], regex, tokens);
+    RegExTokenize(str[i], hRegexpProp, tokens);
     if (tokens.GetSize() == 2)
     {
       if (tokens[0] == "ro.product.manufacturer")
@@ -2506,8 +2491,7 @@ void fardroid::ParseMemoryInfo(CString s)
   CPanelLine pl;
   pl.separator = FALSE;
 
-  CString regex = _T("/(\\w+):\\s+(.+)$/");
-  RegExTokenize(s, regex, tokens);
+  RegExTokenize(s, hRegexpMem, tokens);
   if (tokens.GetSize() > 1)
   {
     pl.text = tokens[0];
@@ -2556,8 +2540,7 @@ void fardroid::ParsePartitionInfo(CString s)
   CString path;
   unsigned long long total = 0, free = 0, used = 0;
 
-  CString regex = _T("/(.*(?=:)):\\W+(\\w+(?=\\stotal)).+,\\s(\\w+(?=\\savailable))/");
-  RegExTokenize(s, regex, tokens);
+  RegExTokenize(s, hRegexpPart1, tokens);
   if (tokens.GetSize() == 3)
   {
     path = tokens[0];
@@ -2567,8 +2550,7 @@ void fardroid::ParsePartitionInfo(CString s)
   }
   else 
   {
-    regex = _T("/^(\\S+)\\s+([\\d.]+\\S*)\\s+([\\d.]+\\S*)\\s+([\\d.]+\\S*)\\s+(?:[\\d.]+%\\s+)?(\\S+)/");
-    RegExTokenize(s, regex, tokens);
+    RegExTokenize(s, hRegexpPart2, tokens);
     if (tokens.GetSize() == 5)
     {
       if (tokens[4][0] == '/')
@@ -2969,8 +2951,7 @@ int fardroid::ADBReadFramebuffer(struct fb* fb)
   return result;
 }
 
-template <typename B>
-void fardroid::WaitForThread(const std::future<B> &f) {
+void fardroid::WaitForThread(const std::future<int> &f) {
   using namespace std::chrono_literals;
   while (true)
   {

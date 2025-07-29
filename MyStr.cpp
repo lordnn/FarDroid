@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "MyStr.h"
+#include <memory>
 
 int _httoi(const TCHAR* value)
 {
@@ -164,36 +165,28 @@ void Tokenize(CString str, strvec& tokens, const CString& sep /*= " "*/, bool bL
   }
 }
 
-void RegExTokenize(CString str, CString regex, strvec& tokens)
+void RegExTokenize(CString str, HANDLE hRegex, strvec& tokens)
 {
-  tokens.RemoveAll();
+  if (hRegex) {
+    tokens.RemoveAll();
 
-  HANDLE hRegex = nullptr;
+    int brackets = static_cast<int>(fInfo.RegExpControl(hRegex, RECTL_BRACKETSCOUNT, 0, nullptr));
 
-  if (fInfo.RegExpControl(nullptr, RECTL_CREATE, 0, static_cast<void *>(&hRegex)))
-  {
-    if (fInfo.RegExpControl(hRegex, RECTL_COMPILE, 0, static_cast<void *>(_C(regex))))
-    {
-      int brackets = static_cast<int>(fInfo.RegExpControl(hRegex, RECTL_BRACKETSCOUNT, 0, nullptr));
+    auto match = std::make_unique<RegExpMatch[]>(brackets);
+    RegExpSearch search = {
+      _C(str),
+      0,
+      str.GetLength(),
+      match.get(),
+      brackets,
+      nullptr
+    };
 
-      RegExpMatch* match = new RegExpMatch[brackets];
-      RegExpSearch search = {
-          _C(str),
-          0,
-          str.GetLength(),
-          match,
-          brackets,
-          nullptr
-      };
-
-      if (fInfo.RegExpControl(hRegex, RECTL_SEARCHEX, 0, static_cast<void *>(&search)))
-      {
-        for (int i = 1; i < brackets; i++)
-          tokens.Add(str.Mid(static_cast<int>(match[i].start), static_cast<int>(match[i].end - match[i].start)));
+    if (fInfo.RegExpControl(hRegex, RECTL_COMPILE, 0, static_cast<void *>(&search))) {
+      for (int i{1}; i < brackets; ++i) {
+        tokens.Add(str.Mid(static_cast<int>(match[i].start), static_cast<int>(match[i].end - match[i].start)));
       }
-      delete[] match;
     }
-    fInfo.RegExpControl(hRegex, RECTL_FREE, 0, nullptr);
   }
 }
 

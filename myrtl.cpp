@@ -42,7 +42,7 @@ namespace crt
 
     wchar_t* my_strdupW(const wchar_t* src)
     {
-      int size = (lstrlen(src) + 1) * sizeof(wchar_t);
+      int size = (lstrlenW(src) + 1) * sizeof(wchar_t);
       wchar_t* str = static_cast<wchar_t*>(my_malloc(size));
       if (str)
         my_memcpy(str, src, size);
