@@ -182,7 +182,7 @@ void RegExTokenize(CString str, HANDLE hRegex, strvec& tokens)
       nullptr
     };
 
-    if (fInfo.RegExpControl(hRegex, RECTL_COMPILE, 0, static_cast<void *>(&search))) {
+    if (fInfo.RegExpControl(hRegex, RECTL_SEARCHEX, 0, static_cast<void *>(&search))) {
       for (int i{1}; i < brackets; ++i) {
         tokens.Add(str.Mid(static_cast<int>(match[i].start), static_cast<int>(match[i].end - match[i].start)));
       }
