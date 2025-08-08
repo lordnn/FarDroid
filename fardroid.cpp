@@ -1337,13 +1337,12 @@ void fardroid::ReadError(SOCKET sockADB, unsigned id, unsigned len, CString& sRe
     return;
   }
 
-  auto buf = new char[len];
-  auto res = ReadADBPacket(sockADB, buf, len);
+  auto buf{ std::make_unique<char[]>(len) };
+  auto res = ReadADBPacket(sockADB, buf.get(), len);
   if (res > 0)
   {
-    sRes = CString(buf, res);
+    sRes = CString(buf.get(), res);
   }
-  delete[] buf;
 }
 
 bool fardroid::ADBSendFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sDst, CString& sRes, int mode)
@@ -1617,7 +1616,7 @@ BOOL fardroid::ADBPullFile(SOCKET sockADB, LPCTSTR sSrc, LPCTSTR sTmp, LPCTSTR s
 
   SetFileTime(hFile, &ft, &ft, &ft);
 
-  auto buffer = std::make_unique<char[]>(SYNC_DATA_MAX);
+  auto buffer{ std::make_unique<char[]>(SYNC_DATA_MAX) };
   DWORD written = 0;
   BOOL bRes = FALSE;
   while (true)
@@ -1910,7 +1909,7 @@ CFileRecord* fardroid::ParseFileLine(CString& sLine) const
   RegExTokenize(sLine, hRegexpFile[isDevice][isLink], tokens);
   if (tokens.GetSize() > 5)
   {
-    auto rec = new CFileRecord;
+    auto rec{ std::make_unique<CFileRecord>() };
     rec->mode = StringToMode(tokens[0]);
     rec->owner = tokens[1];
     rec->grp = tokens[2];
@@ -1930,9 +1929,7 @@ CFileRecord* fardroid::ParseFileLine(CString& sLine) const
     }
 
     if (rec->filename != "." && rec->filename != "..")
-      return rec;
-
-    delete rec;
+      return rec.release();
   }
 
   return nullptr;
@@ -2005,12 +2002,11 @@ void fardroid::DrawProgress(CString& sProgress, int size, double pc)
   if (pc < 0) pc = 0;
 
   auto fn = static_cast<int>(pc * size);
-  auto buf = new wchar_t[size + 1];
+  auto buf{ std::make_unique<wchar_t[]>(size + 1) };
   for (auto i = 0; i < size; i++)
     buf[i] = i < fn ? 0x2588 : 0x2591; //'█':'░'
   buf[size] = 0x0;
-  sProgress.Format(_T("%s %3d%%"), buf, static_cast<int>(pc * 100));
-  delete[] buf;
+  sProgress.Format(_T("%s %3d%%"), buf.get(), static_cast<int>(pc * 100));
 }
 
 void fardroid::DrawProgress(CString& sProgress, int size, LPCTSTR current, LPCTSTR total)
@@ -2757,16 +2753,16 @@ SOCKET fardroid::PrepareADBSocket()
       if (SendADBCommand(sock, _T("host:devices")))
       {
         CString devices = "";
-        auto buf = new char[4097];
-        ReadADBPacket(sock, buf, 4);
+        auto buf{ std::make_unique<char[]>(4097) };
+        ReadADBPacket(sock, buf.get(), 4);
         while (true)
         {
-          auto len = ReadADBPacket(sock, buf, 4096);
+          auto len = ReadADBPacket(sock, buf.get(), 4096);
           if (len <= 0)
             break;
 
           buf[len] = 0;
-          devices += buf;
+          devices += buf.get();
         }
 
         CloseADBSocket(sock);
@@ -2876,17 +2872,16 @@ BOOL fardroid::ADBShellExecute(LPCTSTR sCMD, CString& sRes)
 
   if (SendADBCommand(sockADB, cmd))
   {
-    char* buf = new char[4097];
+    auto buf{ std::make_unique<char[]>(4097) };
     while (true)
     {
-      int len = ReadADBPacket(sockADB, buf, 4096);
+      int len = ReadADBPacket(sockADB, buf.get(), 4096);
       if (len <= 0)
         break;
 
       buf[len] = 0;
-      sRes += buf;
+      sRes += buf.get();
     }
-    delete[] buf;
     bOK = TRUE;
   }
 
@@ -2901,15 +2896,15 @@ int fardroid::ADBReadFramebuffer(struct fb* fb)
   SOCKET sockADB = PrepareADBSocket();
   if (SendADBCommand(sockADB, _T("framebuffer:")))
   {
-    auto buffer = new char[sizeof(struct fbinfo)];
-    if (ReadADBPacket(sockADB, buffer, sizeof(struct fbinfo)) <= 0)
+    auto buffer{ std::make_unique<char[]>(sizeof(struct fbinfo)) };
+    if (ReadADBPacket(sockADB, buffer.get(), sizeof(struct fbinfo)) <= 0)
     {
       CloseADBSocket(sockADB);
       return FALSE;
     }
 
-    const struct fbinfo* fbinfo = reinterpret_cast<struct fbinfo*>(buffer);
-    memcpy(fb, &fbinfo->bpp, sizeof(struct fbinfo) - 4);
+    const struct fbinfo* fbinfo = reinterpret_cast<struct fbinfo*>(buffer.get());
+    std::memcpy(fb, &fbinfo->bpp, sizeof(struct fbinfo) - 4);
 
     if (m_procStruct.Lock())
     {
